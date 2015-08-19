@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="pandoc">
+    <title>Software Carpentry: Data Management in the Ocean, Weather, and Climate Sciences</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="css/bootstrap/bootstrap.css" />
+    <link rel="stylesheet" type="text/css" href="css/bootstrap/bootstrap-theme.css" />
+    <link rel="stylesheet" type="text/css" href="css/swc.css" />
+    <link rel="alternate" type="application/rss+xml" title="Software Carpentry Blog" href="http://software-carpentry.org/feed.xml"/>
+    <meta charset="UTF-8" />
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body class="lesson">
+    <div class="container card">
+      <div class="banner">
+        <a href="http://software-carpentry.org" title="Software Carpentry">
+          <img alt="Software Carpentry banner" src="img/software-carpentry-banner.png" />
+        </a>
+      </div>
+      <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+          <h1 class="title">Data Management in the Ocean, Weather, and Climate Sciences</h1>
+          <h2 class="subtitle">Data Management</h2>
+<div id="learning-objectives" class="objectives panel panel-warning">
+<div class="panel-heading">
+<h2><span class="glyphicon glyphicon-certificate"></span>Learning Objectives</h2>
+</div>
+<div class="panel-body">
+<ul>
+<li>Develop a personal data management plan</li>
+</ul>
+</div>
+</div>
+<p>In this lesson we are going to process some data collected by Australia's Integrated Marine Observing System (<a href="http://www.imos.org.au/">IMOS</a>).</p>
+<p>First off, let's load our data:</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> netCDF4 <span class="ch">import</span> Dataset
+acorn_URL = <span class="st">&#39;http://thredds.aodn.org.au/thredds/dodsC/IMOS/eMII/demos/ACORN/monthly_gridded_1h-avg-current-map_non-QC/TURQ/2012/IMOS_ACORN_V_20121001T000000Z_TURQ_FV00_monthly-1-hour-avg_END-20121029T180000Z_C-20121030T160000Z.nc.gz&#39;</span>
+acorn_DATA = Dataset(acorn_URL) </code></pre>
+<p>The first thing to notice is the distinctive Data Reference Syntax (DRS) associated with the file. The staff at IMOS have archived the data according to the following directory structure:</p>
+<pre><code>http://thredds.aodn.org.au/thredds/dodsC/&lt;project&gt;/&lt;organisation&gt;/&lt;collection&gt;/&lt;facility&gt;/&lt;data-type&gt;/&lt;site-code&gt;/&lt;year&gt;/</code></pre>
+<p>From this we can deduce, without even inspecting the contents of the file, that we have data from the IMOS project that is run by the eMarine Information Infrastructure (eMII). It was collected in 2012 at the Turquoise Coast, Western Australia (TURQ) site of the Australian Coastal Ocean Radar Network (ACORN), which is a network of high frequency radars that measure the ocean surface current (see <a href="http://researchdata.ands.org.au/imos-acorn-turquoise-australia-australia/442676">this page</a> on the Research Data Australia website for a nice overview of the dataset).</p>
+<p>The data type has a sub-DRS of its own, which tells us that the data represents the 1-hourly average surface current for a single month (October 2012), and that it is archived on a regularly spaced spatial grid and has not been quality controlled. The file is located in the &quot;demos&quot; directory, as it has been generated for the purpose of providing an example for users in the very helpful <a href="http://portal.aodn.org.au/aodn/">Australian Ocean Data Network</a> (AODN) <a href="https://github.com/aodn/imos-user-code-library">user code library</a>.</p>
+<p>Just in case the file gets separated from this informative directory stucture, much of the information is repeated in the file name itself, along with some more detailed information about the start and end time of the data, and the last time the file was modified.</p>
+<pre><code>&lt;project&gt;_&lt;facility&gt;_V_&lt;time-start&gt;_&lt;site-code&gt;_FV00_&lt;data-type&gt;_&lt;time-end&gt;_&lt;modified&gt;.nc.gz</code></pre>
+<p>In the first instance this level of detail seems like a bit of overkill, but consider the scope of the IMOS data archive. It is the final resting place for data collected by the entire national array of oceanographic observing equipment in Australia, which monitors the open oceans and coastal marine environment covering physical, chemical and biological variables. Since the data are so well labelled, locating all monthly timescale ACORN data from the Turquoise Coast and Rottnest Shelf sites (which represents hundreds of files) would be as simple as typing the following at the command line:</p>
+<pre class="input"><code>$ ls */ACORN/monthly_*/{TURQ,ROT}/*/*.nc</code></pre>
+<p>While it's unlikely that your research will ever involve cataloging data from such a large observational network, it's still a very good idea to develop your own personal DRS for the data you do have. This often involves investing some time at the beginning of a project to think carefully about the design of your directory and file name structures, as these can be very hard to change later on (a good example is <a href="http://cmip-pcmdi.llnl.gov/cmip5/docs/cmip5_data_reference_syntax.pdf">the DRS</a> used by the Climate Model Intercomparison Project). The combination of bash shell wildcards and a well planned DRS is one of the easiest ways to make your research more efficient and reliable.</p>
+<div id="data-management-plan" class="challenge panel panel-success">
+<div class="panel-heading">
+<h2><span class="glyphicon glyphicon-pencil"></span>Data management plan</h2>
+</div>
+<div class="panel-body">
+<p>We haven't even looked inside our IMOS data file and already we have the beginnings of a detailed data management plan. The first step in any research project should be to develop such a plan, so for this challenge we are going to turn back time. If you could start your current research project all over again, what would your data management plan look like? Things to consider include:</p>
+<ul>
+<li>Data Reference Syntax</li>
+<li>How long it will take to obtain the data</li>
+<li>Storage and backup (here's a <a href="http://drclimate.wordpress.com/2013/04/16/backing-up-your-work/">post</a> with some backup ideas)</li>
+</ul>
+<p>Write down and discuss your plan with your partner.</p>
+</div>
+</div>
+        </div>
+      </div>
+      <div class="footer">
+        <a class="label swc-blue-bg" href="http://software-carpentry.org">Software Carpentry</a>
+        <a class="label swc-blue-bg" href="https://github.com/swcarpentry/lesson-template">Source</a>
+        <a class="label swc-blue-bg" href="mailto:admin@software-carpentry.org">Contact</a>
+        <a class="label swc-blue-bg" href="LICENSE.html">License</a>
+      </div>
+    </div>
+    <!-- Javascript placed at the end of the document so the pages load faster -->
+    <script src="http://software-carpentry.org/v5/js/jquery-1.9.1.min.js"></script>
+    <script src="css/bootstrap/bootstrap-js/bootstrap.js"></script>
+  </body>
+</html>

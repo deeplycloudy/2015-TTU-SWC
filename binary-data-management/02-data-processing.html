@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="pandoc">
+    <title>Software Carpentry: Data Management in the Ocean, Weather, and Climate Sciences</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="css/bootstrap/bootstrap.css" />
+    <link rel="stylesheet" type="text/css" href="css/bootstrap/bootstrap-theme.css" />
+    <link rel="stylesheet" type="text/css" href="css/swc.css" />
+    <link rel="alternate" type="application/rss+xml" title="Software Carpentry Blog" href="http://software-carpentry.org/feed.xml"/>
+    <meta charset="UTF-8" />
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body class="lesson">
+    <div class="container card">
+      <div class="banner">
+        <a href="http://software-carpentry.org" title="Software Carpentry">
+          <img alt="Software Carpentry banner" src="img/software-carpentry-banner.png" />
+        </a>
+      </div>
+      <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+          <h1 class="title">Data Management in the Ocean, Weather, and Climate Sciences</h1>
+          <h2 class="subtitle">Data Processing</h2>
+<div id="learning-objectives" class="objectives panel panel-warning">
+<div class="panel-heading">
+<h2><span class="glyphicon glyphicon-certificate"></span>Learning Objectives</h2>
+</div>
+<div class="panel-body">
+<ul>
+<li>Access the metadata within netCDF files</li>
+<li>Process and plot the contents of a netCDF file</li>
+<li>Use vectorisation instead of looping to speed up data processing</li>
+<li>Awareness of the python libraries used to make plotting and metadata handling easier</li>
+</ul>
+</div>
+</div>
+<h2 id="binary-file-formats">Binary file formats</h2>
+<p>We can guess from the <code>.nc</code> extension that we are dealing with a Network Common Data Form (netCDF) file. It's also compressed, hence the <code>.gz</code>. Had we actually downloaded the file to our computer and uncompressed it, our initial impulse might have been to type,</p>
+<pre><code>!cat IMOS_ACORN_V_20121001T000000Z_TURQ_FV00_monthly-1-hour-avg_END-20121029T180000Z_C-20121030T160000Z.nc</code></pre>
+<p>but such a command would produce an incomprehensible mix symbols and letters. The reason is that up until now, we have been dealing with <a href="http://en.wikipedia.org/wiki/Text_file">text files</a>. These consist of a simple sequence of character data (represented using ASCII, Unicode, or some other standard) separated into lines, meaning that text files are human-readable when opened with a text editor or displayed using <code>cat</code>.</p>
+<p>All other file types (including netCDF) are known collectively as <a href="http://en.wikipedia.org/wiki/Binary_file">binary files</a>. They tend to be smaller and faster for the computer to interpret than text files, but the payoff is that they aren't human-readable unless you have the right intpreter (e.g. <code>.doc</code> files aren't readable with your text editor and must instead be opened with Microsoft Word). To view the contents of a netCDF file we'd need to use a special command line utility called <a href="http://www.unidata.ucar.edu/software/netcdf/docs/netcdf/ncdump.html"><code>ncdump</code></a>, which is included with the netCDF C software (i.e. if you're using any software that knows how to deal with netCDF - such as the Anaconda scientific Python distribution used in Software Carpentry workshops - then you probably have <code>ncdump</code> installed without even knowing it).</p>
+<p>For this example, however, we haven't actually downloaded the netCDF file to our machine. Instead, IMOS has made the data available via a THREDDS server, which means we can just pass a URL to the <code>netCDF4.Dataset</code> function in order to obtain the data.</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="dt">print</span> acorn_DATA</code></pre>
+<pre class="output"><code>&lt;type &#39;netCDF4.Dataset&#39;&gt;
+root group (NETCDF3_CLASSIC data model, file format UNDEFINED):
+    project: Integrated Marine Observing System (IMOS)
+    Conventions: IMOS version 1.3
+    institution: Australian Coastal Ocean Radar Network (ACORN)
+    title: IMOS ACORN Turquoise Coast site (WA) (TURQ), monthly aggregation of one hour averaged current data
+    instrument: CODAR Ocean Sensors/SeaSonde
+    site_code: TURQ, Turqoise Coast
+    ssr_Stations: SeaBird (SBRD), Cervantes (CRVT)
+    id: IMOS/ACORN/au/TURQ/2012-10-08T15:00:00Z.sea_state
+    date_created: 2012-10-30T16:31:50Z
+    abstract: These data have not been quality controlled. The ACORN facility is producing NetCDF files with radials data for each station every ten minutes.  Radials represent the surface sea water state component  along the radial direction from the receiver antenna  and are calculated from the shift of an area under  the bragg peaks in a Beam Power Spectrum.  The radial values have been calculated using software provided  by the manufacturer of the instrument. eMII is using a Matlab program to read all the netcdf files with radial data for two different stations  and produce a one hour average product with U and V components of the current. The final product is produced on a regular geographic (latitude longitude) grid More information on the data processing is available through the IMOS MEST  http://imosmest.aodn.org.au/geonetwork/srv/en/main.home. This file is an aggregation over a month of distinct hourly averaged files.
+    history: 2012-10-09T03:31:35 Convert totl_TURQ_2012_10_08_1500.tuv to netcdf format using CODAR_Convert_File.
+2012-10-09T03:31:36 Write CODAR file totl_TURQ_2012_10_08_1500.tuv. Modification of the NetCDF format by eMII to visualise the data using ncWMS �
+    0x0006 %
+    source: Terrestrial HF radar
+    keywords: Oceans
+    netcdf_version: 3.6
+    naming_authority: Integrated Marine Observing System (IMOS)
+    quality_control_set: 1
+    file_version: Level 0 - Raw data
+    file_version_quality_control: Data in this file has not been quality controlled
+    geospatial_lat_min: [-29.5386582 -29.5927878 -29.6469169 -29.7010456 -29.7551738 -29.8093016
+ -29.863429  -29.9175559 -29.9716823 -30.0258084 -30.0799339 -30.1340591
+ -30.1881837 -30.242308  -30.2964318 -30.3505551 -30.404678  -30.4588004
+ -30.5129224 -30.5670439 -30.621165  -30.6752857 -30.7294059 -30.7835256
+ -30.8376449 -30.8917637 -30.9458821 -31.        -31.0541175 -31.1082345
+ -31.162351  -31.2164671 -31.2705828 -31.324698  -31.3788127 -31.432927
+ -31.4870408 -31.5411542 -31.5952671 -31.6493795 -31.7034915 -31.7576031
+ -31.8117141 -31.8658247 -31.9199349 -31.9740446 -32.0281538 -32.0822625
+ -32.1363708 -32.1904787 -32.244586  -32.2986929 -32.3527994 -32.4069054
+ -32.4610109]
+    geospatial_lat_max: [-29.5252994 -29.5794147 -29.6335296 -29.687644  -29.741758  -29.7958715
+ -29.8499845 -29.904097  -29.9582091 -30.0123207 -30.0664318 -30.1205425
+ -30.1746527 -30.2287624 -30.2828717 -30.3369805 -30.3910888 -30.4451966
+ -30.499304  -30.5534109 -30.6075173 -30.6616232 -30.7157287 -30.7698337
+ -30.8239382 -30.8780423 -30.9321458 -30.9862489 -31.0403515 -31.0944536
+ -31.1485553 -31.2026564 -31.2567571 -31.3108573 -31.364957  -31.4190563
+ -31.473155  -31.5272533 -31.5813511 -31.6354484 -31.6895452 -31.7436416
+ -31.7977374 -31.8518328 -31.9059277 -31.960022  -32.0141159 -32.0682094
+ -32.1223023 -32.1763947 -32.2304867 -32.2845781 -32.3386691 -32.3927596
+ -32.4468495]
+    geospatial_lat_units: degrees_north
+    geospatial_lon_min: [ 112.3100111  112.3090067  112.3080002  112.3069914  112.3059805
+  112.3049674  112.3039521  112.3029346  112.3019149  112.3008929
+  112.2998688  112.2988424  112.2978139  112.2967831  112.29575
+  112.2947147  112.2936772  112.2926374  112.2915953  112.290551
+  112.2895044  112.2884556  112.2874044  112.286351   112.2852953
+  112.2842373  112.283177   112.2821143  112.2810494  112.2799821
+  112.2789125  112.2778406  112.2767663  112.2756897  112.2746108
+  112.2735294  112.2724458  112.2713597  112.2702713  112.2691805
+  112.2680873  112.2669917  112.2658937  112.2647933  112.2636905
+  112.2625853  112.2614777  112.2603676  112.2592551  112.2581402
+  112.2570228  112.2559029  112.2547806  112.2536558  112.2525286]
+    geospatial_lon_max: [ 115.7758038  115.7766744  115.7775469  115.7784212  115.7792975
+  115.7801756  115.7810557  115.7819376  115.7828215  115.7837073
+  115.784595   115.7854846  115.7863762  115.7872697  115.7881651
+  115.7890625  115.7899618  115.7908631  115.7917663  115.7926715
+  115.7935787  115.7944878  115.7953989  115.796312   115.7972271
+  115.7981441  115.7990632  115.7999843  115.8009074  115.8018325
+  115.8027596  115.8036887  115.8046199  115.8055531  115.8064883
+  115.8074256  115.8083649  115.8093063  115.8102497  115.8111952
+  115.8121427  115.8130924  115.8140441  115.8149979  115.8159538
+  115.8169118  115.8178719  115.8188341  115.8197984  115.8207648
+  115.8217334  115.822704   115.8236768  115.8246518  115.8256289]
+    geospatial_lon_units: degrees_east
+    geospatial_vertical_min: 0.0
+    geospatial_vertical_max: 0.0
+    geospatial_vertical_units: m
+    time_coverage_start: 2012-10-01T00:00:00Z
+    time_coverage_duration: PT1H19M
+    local_time_zone: 8.0
+    data_centre_email: info@emii.org.au
+    data_centre: eMarine Information Infrastructure (eMII)
+    author: Besnard, Laurent
+    author_email: laurent.besnard@utas.edu.au
+    institution_references: http://www.imos.org.au/acorn.html
+    principal_investigator: Wyatt, Lucy
+    citation: Citation to be used in publications should follow the format:&quot;IMOS.[year-of-data-download],[Title],[Data access URL],accessed [date-of-access]&quot;
+    acknowledgment: Data was sourced from the Integrated Marine Observing System (IMOS) - IMOS is supported by the Australian Government through the National Collaborative Research Infrastructure Strategy (NCRIS) and the Super Science Initiative (SSI).
+    distribution_statement: Data may be re-used, provided that related metadata explaining the data has been reviewed by the user, and the data is appropriately acknowledged. Data, products and services from IMOS are provided &quot;as is&quot; without any warranty as to fitness for a particular purpose.
+    comment: These data have not been quality controlled. They represent values calculated using software provided by CODAR Ocean Sensors. The file has been modified by eMII in order to visualise the data using the ncWMS software.This NetCDF file has been created using the IMOS NetCDF User Manual v1.2. A copy of the document is available at http://imos.org.au/facility_manuals.html
+    data_center: eMarine Information Infrastructure (eMII)
+    date_modified: 2012-10-30T16:31:50Z
+    time_coverage_end: 2012-10-29T18:00:00Z
+    featureType: grid
+    data_center_email: info@emii.org.au
+    acknowledgement: Data was sourced from Integrated Marine Observing System (IMOS) - an initiative of the Australian Government being conducted as part of the National Calloborative Research Infrastructure Strategy.
+    dimensions(sizes): I(55), J(57), TIME(493)
+    variables(dimensions): float64 LATITUDE(I,J), float64 LONGITUDE(I,J), int8 LATITUDE_quality_control(I,J), int8 LONGITUDE_quality_control(I,J), float64 TIME(TIME), float32 SPEED(TIME,I,J), float32 UCUR(TIME,I,J), float32 VCUR(TIME,I,J), int8 TIME_quality_control(TIME), int8 SPEED_quality_control(TIME,I,J), int8 UCUR_quality_control(TIME,I,J), int8 VCUR_quality_control(TIME,I,J)
+    groups:</code></pre>
+<p>The great thing about netCDF files is that they contain metadata - that is, data about the data. There are global attributes that give information about the file as a whole (shown above - we will come back to these later), while each variable also has its own attributes.</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="dt">print</span> <span class="st">&#39;The file contains the following variables:&#39;</span>
+<span class="dt">print</span> acorn_DATA.variables.keys()</code></pre>
+<pre class="output"><code>The file contains the following variables:
+[u&#39;LATITUDE&#39;, u&#39;LONGITUDE&#39;, u&#39;LATITUDE_quality_control&#39;, u&#39;LONGITUDE_quality_control&#39;, u&#39;TIME&#39;, u&#39;SPEED&#39;, u&#39;UCUR&#39;, u&#39;VCUR&#39;, u&#39;TIME_quality_control&#39;, u&#39;SPEED_quality_control&#39;, u&#39;UCUR_quality_control&#39;, u&#39;VCUR_quality_control&#39;]</code></pre>
+<p>(The 'u' means each variable name is represented by a Unicode string.)</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="dt">print</span> <span class="st">&#39;These are the attributes of the time axis:&#39;</span>
+<span class="dt">print</span> acorn_DATA.variables[<span class="st">&#39;TIME&#39;</span>]
+<span class="dt">print</span> <span class="st">&#39;These are some of the time values:&#39;</span>
+<span class="dt">print</span> acorn_DATA.variables[<span class="st">&#39;TIME&#39;</span>][<span class="dv">0</span>:<span class="dv">10</span>]</code></pre>
+<pre class="output"><code>These are the attributes of the time axis:
+&lt;type &#39;netCDF4.Variable&#39;&gt;
+float64 TIME(TIME)
+    standard_name: time
+    long_name: time
+    units: days since 1950-01-01 00:00:00
+    axis: T
+    valid_min: 0.0
+    valid_max: 999999.0
+    _FillValue: -9999.0
+    calendar: gregorian
+    comment: Given time lays at the middle of the averaging time period.
+    local_time_zone: 8.0
+unlimited dimensions: 
+current shape = (493,)
+filling off
+
+These are some of the time values:
+[ 22919.          22919.04166667  22919.08333333  22919.125       22919.16666667
+  22919.20833333  22919.25        22919.29166667  22919.33333333  22919.375     ]</code></pre>
+<p>The raw time values are fairly meaningless, but we can use the time attributes to convert them to a more meaningful format...</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> netCDF4 <span class="ch">import</span> num2date
+units = acorn_DATA.variables[<span class="st">&#39;TIME&#39;</span>].units
+calendar = acorn_DATA.variables[<span class="st">&#39;TIME&#39;</span>].calendar
+
+times = num2date(acorn_DATA.variables[<span class="st">&#39;TIME&#39;</span>][:], units=units, calendar=calendar)
+<span class="dt">print</span> times[<span class="dv">0</span>:<span class="dv">10</span>]</code></pre>
+<pre class="output"><code>[datetime.datetime(2012, 10, 1, 0, 0) datetime.datetime(2012, 10, 1, 1, 0)
+ datetime.datetime(2012, 10, 1, 2, 0) datetime.datetime(2012, 10, 1, 3, 0)
+ datetime.datetime(2012, 10, 1, 4, 0) datetime.datetime(2012, 10, 1, 5, 0)
+ datetime.datetime(2012, 10, 1, 6, 0) datetime.datetime(2012, 10, 1, 7, 0)
+ datetime.datetime(2012, 10, 1, 8, 0) datetime.datetime(2012, 10, 1, 9, 0)]</code></pre>
+<div id="climate-and-forecast-cf-metadata-convention" class="callout panel panel-info">
+<div class="panel-heading">
+<h2><span class="glyphicon glyphicon-pushpin"></span>Climate and Forecast (CF) metadata convention</h2>
+</div>
+<div class="panel-body">
+<p>When performing simple data analysis tasks on netCDF files, command line tools like the Climate Data Operators (<a href="https://code.zmaw.de/projects/cdo">CDO</a>)<br />are often a better alternative to writing your own functions in Python. However, let's put ourselves in the shoes of the developers of CDO for a minute. In order to calculate the time mean of a dataset for a given start and end date (for example), CDO must first identify the units of the time axis. This isn't as easy as you'd think, since the creator of the netCDF file could easily have called the <code>units</code> attribute <code>measure</code>, or <code>scale</code>, or something else completely unpredictable. They could also have defined the units as <code>weeks since 1-01-01 00:00:00</code> or <code>milliseconds after 1979-12-31</code>. Obviously what is needed is a standard method for defining netCDF attributes, and that’s where the <a href="http://cf-pcmdi.llnl.gov/">Climate and Forecast (CF) metadata convention</a> comes in.</p>
+<p>The CF metadata standard was first defined back in the early 2000s and has now been adopted by all the major institutions and projects in the weather/climate sciences. There's a nice <a href="http://drclimate.wordpress.com/2014/06/09/are-you-cf-compliant/">blog post</a> on the topic if you'd like more information, but for the most part you just need to be aware that if a tool like CDO isn't working, it might be because your netCDF file isn't CF compliant.</p>
+</div>
+</div>
+<h2 id="calculating-the-current-speed">Calculating the current speed</h2>
+<p>For the sake of example, let's say that our data file contained the zonal (east/west; 'UCUR') and meridional (north/south; 'VCUR') surface current components, but not the total current speed. To calculate it, we first need to assign a variable to the zonal and meridional current data.</p>
+<pre class="sourceCode python"><code class="sourceCode python">uData = acorn_DATA.variables[<span class="st">&#39;UCUR&#39;</span>][:,:,:]
+vData = acorn_DATA.variables[<span class="st">&#39;VCUR&#39;</span>][:,:,:]</code></pre>
+<p>Both <code>uData</code> and <code>vData</code> are a special type of numpy array (which we have met previously) known as a masked array, whereby some of the points in the time/latitude/longitude grid have missing (or masked) values. Just as with a normal numpy array, we can check the shape of our data (in fact, masked arrays can do everything normal numpy arrays can do and more).</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="dt">print</span> <span class="dt">type</span>(uData)
+<span class="dt">print</span> uData.shape</code></pre>
+<pre class="output"><code>&lt;class &#39;numpy.ma.core.MaskedArray&#39;&gt;
+(493, 55, 57)</code></pre>
+<p>In other words, 493 time steps, 55 latitudes and 57 longitudes. We can now go ahead and calculate the current speed.</p>
+<pre class="sourceCode python"><code class="sourceCode python">spData = (uData**<span class="dv">2</span> + vData**<span class="dv">2</span>)**<span class="fl">0.5</span></code></pre>
+<h3 id="viewing-the-result">Viewing the result</h3>
+<p>It's a good idea to regularly view your data throughout the code development process, just to ensure nothing that crazy has happened along the way. Below is a code except from <a href="https://github.com/aodn/imos-user-code-library/blob/master/Python/demos/acorn.py">this example</a> in the AODN user code library, which simply plots one of the 493 timesteps.</p>
+<pre class="sourceCode python"><code class="sourceCode python">%matplotlib inline
+<span class="ch">from</span> matplotlib.pyplot <span class="ch">import</span> figure, pcolor, colorbar, xlabel, ylabel, title, draw, quiver, show, savefig
+
+LAT = acorn_DATA.variables[<span class="st">&#39;LATITUDE&#39;</span>]
+LON = acorn_DATA.variables[<span class="st">&#39;LONGITUDE&#39;</span>]
+TIME = acorn_DATA.variables[<span class="st">&#39;TIME&#39;</span>]
+
+<span class="co"># Only one time value is being plotted. modify timeIndex if desired (value between 0 and length(timeData)-1 )</span>
+timeIndex = <span class="dv">4</span>
+speedData = spData[timeIndex,:,:]
+latData = LAT[:]
+lonData = LON[:]
+
+<span class="co"># sea water U and V components</span>
+uData = acorn_DATA.variables[<span class="st">&#39;UCUR&#39;</span>][timeIndex,:,:]
+vData = acorn_DATA.variables[<span class="st">&#39;VCUR&#39;</span>][timeIndex,:,:]
+units = acorn_DATA.variables[<span class="st">&#39;UCUR&#39;</span>].units
+
+figure1 = figure(figsize=(<span class="dv">13</span>, <span class="dv">10</span>), dpi=<span class="dv">80</span>, facecolor=<span class="st">&#39;w&#39;</span>, edgecolor=<span class="st">&#39;k&#39;</span>)
+pcolor(lonData , latData, speedData)
+cbar = colorbar()
+cbar.ax.set_ylabel(<span class="st">&#39;Current speed in &#39;</span> + units)
+
+title(acorn_DATA.title + <span class="st">&#39;</span><span class="ch">\n</span><span class="st">&#39;</span> + num2date(TIME[timeIndex], TIME.units, TIME.calendar).strftime(<span class="st">&#39;</span><span class="ot">%d</span><span class="st">/%m/%Y&#39;</span>))
+xlabel(LON.long_name + <span class="st">&#39; in &#39;</span> + LON.units)
+ylabel(LAT.long_name + <span class="st">&#39; in &#39;</span> + LAT.units)
+
+<span class="co"># plot velocity field</span>
+Q = quiver(lonData[:], latData[:], uData, vData, units=<span class="st">&#39;width&#39;</span>)
+show()</code></pre>
+<div class="figure">
+<img src="fig/surface_current.svg" alt="Figure: surface current" /><p class="caption">Figure: surface current</p>
+</div>
+<div id="plotting-options" class="callout panel panel-info">
+<div class="panel-heading">
+<h2><span class="glyphicon glyphicon-pushpin"></span>Plotting options</h2>
+</div>
+<div class="panel-body">
+<p>Quite a few lines of code were required to create our publication quality figure using <a href="http://matplotlib.org/">matplotlib</a>, and there would have been even more had we wanted to use the <a href="http://matplotlib.org/basemap/">basemap</a> library to plot coastlines or change the map projection. Recognising this burden, the team at the UK Met Office have developed <a href="http://scitools.org.uk/iris/">Iris</a> and <a href="http://scitools.org.uk/cartopy/">Cartopy</a>, which build on matplotlib and basemap to provide a more convenient interface (read: shorter, less complex code) for plotting in the weather, climate and ocean sciences.</p>
+<p>The easiest way to install Iris and Cartopy is to use the <a href="http://www.continuum.io/blog/conda">conda</a> package installer that comes with Anaconda. Simply enter the following at the command line:</p>
+<pre><code>conda install -c scitools iris</code></pre>
+<p>What if you want to view the contents of a netCDF file quickly, rather than go to the effort of producing something that is publication quality? There are numerous tools out there for doing this, including <a href="http://www.giss.nasa.gov/tools/panoply/">Panoply</a> and <a href="http://uvcdat.llnl.gov/">UV-CDAT</a>.</p>
+</div>
+</div>
+<div id="vectorisation" class="challenge panel panel-success">
+<div class="panel-heading">
+<h2><span class="glyphicon glyphicon-pencil"></span>Vectorisation</h2>
+</div>
+<div class="panel-body">
+<p>Let's say (hypothetically) that the TURQ site radar has been found to be unreliable for surface current speeds greater than 0.9 m/s. To correct for this problem, the IMOS documentation suggests setting all values greater than 0.9 m/s, back to 0.9 m/s. The most obvious solution to this problem would be to loop through every element in <code>spData</code> and check its value:</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="kw">for</span> t in <span class="dt">range</span>(<span class="dv">0</span>, <span class="dt">len</span>(TIME[:])):
+    <span class="kw">for</span> y in <span class="dt">range</span>(<span class="dv">0</span>, <span class="dt">len</span>(LAT[:])):
+        <span class="kw">for</span> x in <span class="dt">range</span>(<span class="dv">0</span>, <span class="dt">len</span>(LON[:])):
+            <span class="kw">if</span> spData[t, y, x] &gt; <span class="fl">0.9</span>:
+                spData[t, y, x] = <span class="fl">0.9</span></code></pre>
+<p>The problem is that not only is this nested loop kind of ugly, it's also pretty slow. If our data array was even larger (e.g. like the huge data arrays that high resolution global climate models produce), then it would probably be prohibitively slow. The reason is that <em>high level</em> languages like Python and Matlab are built for usability (i.e. they make it easy to write concise, readable code), not speed. To get around this problem, people have written Python libraries (like <code>numpy</code>) in <em>low level</em> languages like C and Fortran, which are built for speed (but definitely not usability). Fortunately we don't ever need to see the C code under the hood of the <code>numpy</code> library, but we should use it to <a href="http://en.wikipedia.org/wiki/Array_programming">vectorise</a> our array operations whenever possible.</p>
+<p>With this in mind:</p>
+<ul>
+<li>Use the <code>numpy.ma.where()</code> function to correct all values in <code>spData</code> greater than 0.9 (hint: you'll need to <code>import numpy.ma</code>)</li>
+<li>Use the <code>%timeit</code> cell magic to compare the speed of your answer to the nested loop described above</li>
+</ul>
+</div>
+</div>
+        </div>
+      </div>
+      <div class="footer">
+        <a class="label swc-blue-bg" href="http://software-carpentry.org">Software Carpentry</a>
+        <a class="label swc-blue-bg" href="https://github.com/swcarpentry/lesson-template">Source</a>
+        <a class="label swc-blue-bg" href="mailto:admin@software-carpentry.org">Contact</a>
+        <a class="label swc-blue-bg" href="LICENSE.html">License</a>
+      </div>
+    </div>
+    <!-- Javascript placed at the end of the document so the pages load faster -->
+    <script src="http://software-carpentry.org/v5/js/jquery-1.9.1.min.js"></script>
+    <script src="css/bootstrap/bootstrap-js/bootstrap.js"></script>
+  </body>
+</html>

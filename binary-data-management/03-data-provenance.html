@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="generator" content="pandoc">
+    <title>Software Carpentry: Data Management in the Ocean, Weather, and Climate Sciences</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="css/bootstrap/bootstrap.css" />
+    <link rel="stylesheet" type="text/css" href="css/bootstrap/bootstrap-theme.css" />
+    <link rel="stylesheet" type="text/css" href="css/swc.css" />
+    <link rel="alternate" type="application/rss+xml" title="Software Carpentry Blog" href="http://software-carpentry.org/feed.xml"/>
+    <meta charset="UTF-8" />
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body class="lesson">
+    <div class="container card">
+      <div class="banner">
+        <a href="http://software-carpentry.org" title="Software Carpentry">
+          <img alt="Software Carpentry banner" src="img/software-carpentry-banner.png" />
+        </a>
+      </div>
+      <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+          <h1 class="title">Data Management in the Ocean, Weather, and Climate Sciences</h1>
+          <h2 class="subtitle">Data Provenance</h2>
+<div id="learning-objectives" class="objectives panel panel-warning">
+<div class="panel-heading">
+<h2><span class="glyphicon glyphicon-certificate"></span>Learning Objectives</h2>
+</div>
+<div class="panel-body">
+<ul>
+<li>Record data processing steps in the history attribute of netCDF files</li>
+<li>Include this provenance tracking in a personal data management plan</li>
+</ul>
+</div>
+</div>
+<p>Now that we've developed some code for reading in zonal and meridional surface current data and calculating the speed, the logical next step is to put that code in a script called <code>calc_current_speed.py</code> so that we can repeat the process quickly and easily.</p>
+<p>The output of that script will be a new netCDF file containing the current speed data, however there's one more thing to consider before we go ahead and start creating new files. Looking closely at the global attributes of <code>IMOS_ACORN_V_20121001T000000Z_TURQ_FV00_monthly-1-hour-avg_END-20121029T180000Z_C-20121030T160000Z.nc</code> you can see that the entire history of the file, all the way back to its initial download, has been recorded in the <code>history</code> attribute.</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="dt">print</span> acorn_DATA.history</code></pre>
+<pre class="output"><code>2012-10-09T03:31:35 Convert totl_TURQ_2012_10_08_1500.tuv to netcdf format using CODAR_Convert_File.
+2012-10-09T03:31:36 Write CODAR file totl_TURQ_2012_10_08_1500.tuv. Modification of the NetCDF format by eMII to visualise the data using ncWMS</code></pre>
+<p>This practice of recording the history of the file ensures the <a href="http://en.wikipedia.org/wiki/Provenance">provenance</a> of the data. In other words, a complete record of everything that has been done to the data is stored with the data, which avoids any confusion in the event that the data is ever moved, passed around to different users, or viewed by its creator many months later.</p>
+<p>If we want to create our own entry for the history attribute, we'll need to be able to create a:</p>
+<ul>
+<li>Time stamp</li>
+<li>Record of what was entered at the command line in order to execute <code>calc_current_speed.py</code></li>
+<li>Method of indicating which verion of the script was run (i.e. because the script is in our git repository)</li>
+</ul>
+<h3 id="time-stamp">Time stamp</h3>
+<p>A library called <code>datetime</code> can be used to find out the time and date right now:</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">import</span> datetime
+ 
+time_stamp = datetime.datetime.now().strftime(<span class="st">&quot;%Y-%m-</span><span class="ot">%d</span><span class="st">T%H:%M:%S&quot;</span>)
+<span class="dt">print</span> time_stamp</code></pre>
+<pre class="output"><code>2015-02-17T20:26:25</code></pre>
+<p>The <code>strftime</code> function can be used to customise the appearance of a datetime object; in this case we've made it look just like the other time stamps in our data file.</p>
+<h3 id="command-line-record">Command line record</h3>
+<p>In the <a href="http://www.software-carpentry.org/v5/novice/python/06-cmdline.html">lesson on command line programs</a> we met <code>sys.argv</code>, which contains all the arguments entered by the user at the command line:</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">import</span> sys
+<span class="dt">print</span> sys.argv</code></pre>
+<pre class="output"><code>[&#39;-c&#39;, &#39;-f&#39;, &#39;/opt/ipython/profile_default/security/kernel-349ad03b-2b0e-46ef-98b0-39af6d92db4e.json&#39;, &quot;--IPKernelApp.parent_appname=&#39;ipython-notebook&#39;&quot;, &#39;--profile-dir&#39;, &#39;/opt/ipython/profile_default&#39;, &#39;--parent=1&#39;]</code></pre>
+<p>In launching this IPython notebook, you can see that a number of command line arguments were used. To join all these list elements up, we can use the <code>join</code> function that belongs to Python strings:</p>
+<pre class="sourceCode python"><code class="sourceCode python">args = <span class="st">&quot; &quot;</span>.join(sys.argv)
+<span class="dt">print</span> args</code></pre>
+<pre class="output"><code>-c -f /opt/ipython/profile_default/security/kernel-349ad03b-2b0e-46ef-98b0-39af6d92db4e.json --IPKernelApp.parent_appname=&#39;ipython-notebook&#39; --profile-dir /opt/ipython/profile_default --parent=1</code></pre>
+<p>While this list of arguments is very useful, it doesn't tell us which Python installation was used to execute those arguments. The <code>sys</code> library can help us out here too:</p>
+<pre class="sourceCode python"><code class="sourceCode python">exe = sys.executable
+<span class="dt">print</span> exe</code></pre>
+<pre class="output"><code>/opt/python/bin/python</code></pre>
+<h3 id="git-hash">Git hash</h3>
+<p>In the Software Carpentry lessons on git we learned that each commit is associated with a unique 40-character identifier known as a hash. We can use the git Python library to get the hash associated with the script:</p>
+<pre class="sourceCode python"><code class="sourceCode python"><span class="ch">from</span> git <span class="ch">import</span> Repo
+<span class="ch">import</span> os
+
+git_hash = Repo(os.getcwd()).heads[<span class="dv">0</span>].commit
+<span class="dt">print</span> git_hash</code></pre>
+<pre class="output"><code>765320b051cc5f9947f899637a2f38a8de3bcc3c</code></pre>
+<p>We can now put all this information together for our history entry:</p>
+<pre class="sourceCode python"><code class="sourceCode python">entry = <span class="st">&quot;&quot;&quot;</span><span class="ot">%s</span><span class="st">: </span><span class="ot">%s</span><span class="st"> </span><span class="ot">%s</span><span class="st"> (Git hash: </span><span class="ot">%s</span><span class="st">)&quot;&quot;&quot;</span> %(time_stamp, exe, args, <span class="dt">str</span>(git_hash)[<span class="dv">0</span>:<span class="dv">7</span>])
+<span class="dt">print</span> entry</code></pre>
+<pre class="output"><code>2015-02-17T20:26:25: /opt/python/bin/python -c -f /opt/ipython/profile_default/security/kernel-349ad03b-2b0e-46ef-98b0-39af6d92db4e.json --IPKernelApp.parent_appname=&#39;ipython-notebook&#39; --profile-dir /opt/ipython/profile_default --parent=1 (Git hash: 765320b)</code></pre>
+<h2 id="putting-it-all-together">Putting it all together</h2>
+<p>So far we've been experimenting in the IPython notebook to familiarise ourselves with <code>netCDF4</code> and the other Python libraries that might be useful for calculating the surface current speed. We should now go ahead and write a script, so we can repeat the process with a single entry at the command line:</p>
+<pre class="input"><code>$ cat code/calc_current_speed.py</code></pre>
+<pre class="output"><code>import os, sys, argparse
+import datetime
+from git import Repo
+from netCDF4 import Dataset
+
+
+def calc_speed(u, v):
+    &quot;&quot;&quot;Calculate the speed&quot;&quot;&quot;
+
+    speed = (u**2 + v**2)**0.5
+
+    return speed
+
+
+def copy_dimensions(infile, outfile):
+    &quot;&quot;&quot;Copy the dimensions of the infile to the outfile&quot;&quot;&quot;
+        
+    for dimName, dimData in infile.dimensions.iteritems():
+        outfile.createDimension(dimName, len(dimData))
+
+
+def copy_variables(infile, outfile):
+    &quot;&quot;&quot;Create variables corresponding to the file dimensions 
+    by copying from infile&quot;&quot;&quot;
+            
+    for var_name in [&#39;TIME&#39;, &#39;LATITUDE&#39;, &#39;LONGITUDE&#39;]:
+        varin = infile.variables[var_name]
+        outVar = outfile.createVariable(var_name, varin.datatype, 
+                                        varin.dimensions, 
+                                        fill_value=varin._FillValue)
+        outVar[:] = varin[:]
+            
+        var_atts = {}
+        for att in varin.ncattrs():
+            if not att == &#39;_FillValue&#39;:
+                var_atts[att] = eval(&#39;varin.&#39;+att) 
+        outVar.setncatts(var_atts)
+
+
+def create_history():
+    &quot;&quot;&quot;Create the new entry for the global history file attribute&quot;&quot;&quot;
+
+    time_stamp = datetime.datetime.now().strftime(&quot;%Y-%m-%dT%H:%M:%S&quot;)
+    exe = sys.executable
+    args = &quot; &quot;.join(sys.argv)
+    git_hash = Repo(os.getcwd()).heads[0].commit
+
+    return &quot;&quot;&quot;%s: %s %s (Git hash: %s)&quot;&quot;&quot; %(time_stamp, exe, args, str(git_hash)[0:7])
+
+
+def read_data(ifile, uVar, vVar):
+    &quot;&quot;&quot;Read data from ifile corresponding to the U and V variable&quot;&quot;&quot;
+
+    input_DATA = Dataset(ifile)
+    uData = input_DATA.variables[uVar][:]
+    vData = input_DATA.variables[vVar][:]
+
+    return uData, vData, input_DATA
+
+
+def set_global_atts(infile, outfile):
+    &quot;&quot;&quot;Set the global attributes for outfile.
+        
+    Note that the global attributes are simply copied from
+    infile and the history attribute updated accordingly.
+        
+    &quot;&quot;&quot;
+        
+    global_atts = {}
+    for att in infile.ncattrs():
+        global_atts[att] = eval(&#39;infile.&#39;+att)  
+        
+    new_history = create_history()
+    global_atts[&#39;history&#39;] = &quot;&quot;&quot;%s\n%s&quot;&quot;&quot; %(new_history,  global_atts[&#39;history&#39;])
+    outfile.setncatts(global_atts)
+
+
+def write_speed(infile, outfile, spData):
+    &quot;&quot;&quot;Write the current speed data to outfile&quot;&quot;&quot;
+        
+    u = infile.variables[&#39;UCUR&#39;]   
+    spcur = outfile.createVariable(&#39;SPCUR&#39;, u.datatype, u.dimensions, fill_value=u._FillValue)
+    spcur[:,:,:] = spData    
+    
+    spcur.standard_name = &#39;sea_water_speed&#39;
+    spcur.long_name = &#39;sea water speed&#39;
+    spcur.units = u.units
+    spcur.coordinates = u.coordinates
+    
+
+def main(inargs):
+    &quot;&quot;&quot;Run the program&quot;&quot;&quot;
+    
+    inFile = inargs.infile
+    uVar = inargs.uvar
+    vVar = inargs.vvar
+    outfile_name = inargs.outfile
+
+    # Read input data 
+    uData, vData, input_DATA = read_data(inFile, uVar, vVar)
+    
+    # Calculate the current speed
+    spData = calc_speed(uData, vData)
+    
+    # Write the output file
+    outfile = Dataset(outfile_name, &#39;w&#39;, format=&#39;NETCDF4&#39;)
+    set_global_atts(input_DATA, outfile)
+    copy_dimensions(input_DATA, outfile)
+    copy_variables(input_DATA, outfile)
+    write_speed(input_DATA, outfile, spData) 
+    
+    outfile.close()
+
+
+if __name__ == &#39;__main__&#39;:
+
+    extra_info =&quot;&quot;&quot;example:
+  python calc_current_speed.py http://thredds.aodn.org.au/thredds/dodsC/IMOS/eMII/demos/ACORN/monthly_gridded_1h-avg-current-map_non-QC/TURQ/2012/IMOS_ACORN_V_20121001T000000Z_TURQ_FV00_monthly-1-hour-avg_END-20121029T180000Z_C-20121030T160000Z.nc.gz UCUR VCUR IMOS_ACORN_SPCUR_20121001T000000Z_TURQ_monthly-1-hour-avg_END-20121029T180000Z.nc 
+
+author:
+  Damien Irving, irving.damien@gmail.com
+
+&quot;&quot;&quot;
+
+    description=&#39;Calculate the current speed&#39;
+    parser = argparse.ArgumentParser(description=description,
+                                     epilog=extra_info,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+
+    parser.add_argument(&quot;infile&quot;, type=str, help=&quot;Input file name&quot;)
+    parser.add_argument(&quot;uvar&quot;, type=str, help=&quot;Name of the zonal flow variable&quot;)
+    parser.add_argument(&quot;vvar&quot;, type=str, help=&quot;Name of the meridional flow variable&quot;)
+    parser.add_argument(&quot;outfile&quot;, type=str, help=&quot;Output file name&quot;)
+
+    args = parser.parse_args()            
+
+    print &#39;Input file: &#39;, args.infile
+    print &#39;Output file: &#39;, args.outfile  
+
+    main(args)</code></pre>
+<div id="introducing-xray" class="callout panel panel-info">
+<div class="panel-heading">
+<h2><span class="glyphicon glyphicon-pushpin"></span>Introducing xray</h2>
+</div>
+<div class="panel-body">
+<p>It took four separate functions in <code>calc_current_speed.py</code> to create the output file, because we had to copy the dimensions and most of the global and variable attributes from the original file to the new file. This is such a common problem that a Python library called <a href="http://xray.readthedocs.org/en/stable/">xray</a> has been developed, which conserves metadata whenever possible. When xray is used to read a netCDF file, the data are stored as an <code>xray.DataArray</code> (as opposed to a <code>numpy.ndarray</code>). These special data arrays carry their dimension information and variable atributes with them, which means you don't have to retrieve them manually. xray also comes with a bunch of convenience functions for doing typical weather/climate/ocean tasks (calculating climatologies, anomalies, etc), which can be a pain using numpy.</p>
+<p>Similar to Iris and Cartopy, the easiest way to install xray is with the conda package installer. Simply type the following at the command line:</p>
+<pre><code>conda install xray dask netCDF4 bottleneck</code></pre>
+</div>
+</div>
+<p>Using the help information that the <code>argparse</code> library provides, we can now go ahead and run this script:</p>
+<pre class="input"><code>$ python calc_current_speed.py -h</code></pre>
+<pre class="output"><code>usage: calc_current_speed.py [-h] infile uvar vvar outfile
+
+Calculate the current speed
+
+positional arguments:
+  infile      Input file name
+  uvar        Name of the zonal flow variable
+  vvar        Name of the meridional flow variable
+  outfile     Output file name
+
+optional arguments:
+  -h, --help  show this help message and exit
+
+example:
+  python calc_current_speed.py http://thredds.aodn.org.au/thredds/dodsC/IMOS/eMII/demos/ACORN/monthly_gridded_1h-avg-current-map_non-QC/TURQ/2012/IMOS_ACORN_V_20121001T000000Z_TURQ_FV00_monthly-1-hour-avg_END-20121029T180000Z_C-20121030T160000Z.nc.gz UCUR VCUR IMOS_ACORN_SPCUR_20121001T000000Z_TURQ_monthly-1-hour-avg_END-20121029T180000Z.nc 
+
+author:
+  Damien Irving, irving.damien@gmail.com</code></pre>
+<pre class="input"><code>$ python calc_current_speed.py http://thredds.aodn.org.au/thredds/dodsC/IMOS/eMII/demos/ACORN/monthly_gridded_1h-avg-current-map_non-QC/TURQ/2012/IMOS_ACORN_V_20121001T000000Z_TURQ_FV00_monthly-1-hour-avg_END-20121029T180000Z_C-20121030T160000Z.nc.gz UCUR VCUR IMOS_ACORN_SPCUR_20121001T000000Z_TURQ_monthly-1-hour-avg_END-20121029T180000Z.nc </code></pre>
+<pre class="output"><code>Input file:  http://thredds.aodn.org.au/thredds/dodsC/IMOS/eMII/demos/ACORN/monthly_gridded_1h-avg-current-map_non-QC/TURQ/2012/IMOS_ACORN_V_20121001T000000Z_TURQ_FV00_monthly-1-hour-avg_END-20121029T180000Z_C-20121030T160000Z.nc.gz
+Output file:  IMOS_ACORN_SPCUR_20121001T000000Z_TURQ_monthly-1-hour-avg_END-20121029T180000Z.nc</code></pre>
+<h2 id="the-finished-product">The finished product</h2>
+<p>We can now inspect the attributes in our new file:</p>
+<pre class="input"><code>$ ncdump -h IMOS_ACORN_SPCUR_20121001T000000Z_TURQ_monthly-1-hour-avg_END-20121029T180000Z.nc</code></pre>
+<pre class="output"><code>netcdf IMOS_ACORN_SPCUR_20121001T000000Z_TURQ_monthly-1-hour-avg_END-20121029T180000Z {
+dimensions:
+    I = 55 ;
+    J = 57 ;
+    TIME = 493 ;
+variables:
+    double TIME(TIME) ;
+        TIME:_FillValue = -9999. ;
+        TIME:comment = &quot;Given time lays at the middle of the averaging time period.&quot; ;
+        TIME:valid_min = 0. ;
+        TIME:long_name = &quot;time&quot; ;
+        TIME:standard_name = &quot;time&quot; ;
+        TIME:local_time_zone = 8. ;
+        TIME:units = &quot;days since 1950-01-01 00:00:00&quot; ;
+        TIME:calendar = &quot;gregorian&quot; ;
+        TIME:valid_max = 999999. ;
+        TIME:axis = &quot;T&quot; ;
+    double LATITUDE(I, J) ;
+        LATITUDE:_FillValue = 9999. ;
+        LATITUDE:valid_min = -90. ;
+        LATITUDE:reference_datum = &quot;geographical coordinates, WGS84 projection&quot; ;
+        LATITUDE:long_name = &quot;latitude&quot; ;
+        LATITUDE:standard_name = &quot;latitude&quot; ;
+        LATITUDE:units = &quot;degrees_north&quot; ;
+        LATITUDE:valid_max = 90. ;
+        LATITUDE:axis = &quot;Y&quot; ;
+    double LONGITUDE(I, J) ;
+        LONGITUDE:_FillValue = 9999. ;
+        LONGITUDE:valid_min = -180. ;
+        LONGITUDE:reference_datum = &quot;geographical coordinates, WGS84 projection&quot; ;
+        LONGITUDE:long_name = &quot;longitude&quot; ;
+        LONGITUDE:standard_name = &quot;longitude&quot; ;
+        LONGITUDE:units = &quot;degrees_east&quot; ;
+        LONGITUDE:valid_max = 180. ;
+        LONGITUDE:axis = &quot;X&quot; ;
+    float SPCUR(TIME, I, J) ;
+        SPCUR:_FillValue = 9999.f ;
+        SPCUR:standard_name = &quot;sea_water_speed&quot; ;
+        SPCUR:long_name = &quot;sea water speed&quot; ;
+        SPCUR:units = &quot;m s-1&quot; ;
+        SPCUR:coordinates = &quot;TIME LATITUDE LONGITUDE&quot; ;
+
+// global attributes:
+        :comment = &quot;These data have not been quality controlled. They represent values calculated using software provided by CODAR Ocean Sensors. The file has been modified by eMII in order to visualise the data using the ncWMS software.This NetCDF file has been created using the IMOS NetCDF User Manual v1.2. A copy of the document is available at http://imos.org.au/facility_manuals.html&quot; ;
+        :distribution_statement = &quot;Data may be re-used, provided that related metadata explaining the data has been reviewed by the user, and the data is appropriately acknowledged. Data, products and services from IMOS are provided \&quot;as is\&quot; without any warranty as to fitness for a particular purpose.&quot; ;
+        :geospatial_vertical_max = 0. ;
+        :featureType = &quot;grid&quot; ;
+        :abstract = &quot;These data have not been quality controlled. The ACORN facility is producing NetCDF files with radials data for each station every ten minutes.  Radials represent the surface sea water state component  along the radial direction from the receiver antenna  and are calculated from the shift of an area under  the bragg peaks in a Beam Power Spectrum.  The radial values have been calculated using software provided  by the manufacturer of the instrument. eMII is using a Matlab program to read all the netcdf files with radial data for two different stations  and produce a one hour average product with U and V components of the current. The final product is produced on a regular geographic (latitude longitude) grid More information on the data processing is available through the IMOS MEST  http://imosmest.aodn.org.au/geonetwork/srv/en/main.home. This file is an aggregation over a month of distinct hourly averaged files.&quot; ;
+        :citation = &quot;Citation to be used in publications should follow the format:\&quot;IMOS.[year-of-data-download],[Title],[Data access URL],accessed [date-of-access]\&quot;&quot; ;
+        :geospatial_lat_units = &quot;degrees_north&quot; ;
+        :geospatial_lon_units = &quot;degrees_east&quot; ;
+        :data_center = &quot;eMarine Information Infrastructure (eMII)&quot; ;
+        :keywords = &quot;Oceans&quot; ;
+        :id = &quot;IMOS/ACORN/au/TURQ/2012-10-08T15:00:00Z.sea_state&quot; ;
+        :naming_authority = &quot;Integrated Marine Observing System (IMOS)&quot; ;
+        :institution_references = &quot;http://www.imos.org.au/acorn.html&quot; ;
+        :geospatial_lat_max = -29.5252994, -29.5794147, -29.6335296, -29.687644, -29.741758, -29.7958715, -29.8499845, -29.904097, -29.9582091, -30.0123207, -30.0664318, -30.1205425, -30.1746527, -30.2287624, -30.2828717, -30.3369805, -30.3910888, -30.4451966, -30.499304, -30.5534109, -30.6075173, -30.6616232, -30.7157287, -30.7698337, -30.8239382, -30.8780423, -30.9321458, -30.9862489, -31.0403515, -31.0944536, -31.1485553, -31.2026564, -31.2567571, -31.3108573, -31.364957, -31.4190563, -31.473155, -31.5272533, -31.5813511, -31.6354484, -31.6895452, -31.7436416, -31.7977374, -31.8518328, -31.9059277, -31.960022, -32.0141159, -32.0682094, -32.1223023, -32.1763947, -32.2304867, -32.2845781, -32.3386691, -32.3927596, -32.4468495 ;
+        :acknowledgment = &quot;Data was sourced from the Integrated Marine Observing System (IMOS) - IMOS is supported by the Australian Government through the National Collaborative Research Infrastructure Strategy (NCRIS) and the Super Science Initiative (SSI).&quot; ;
+        :title = &quot;IMOS ACORN Turquoise Coast site (WA) (TURQ), monthly aggregation of one hour averaged current data&quot; ;
+        :author_email = &quot;laurent.besnard@utas.edu.au&quot; ;
+        :netcdf_version = &quot;3.6&quot; ;
+        :site_code = &quot;TURQ, Turqoise Coast&quot; ;
+        :file_version = &quot;Level 0 - Raw data&quot; ;
+        :instrument = &quot;CODAR Ocean Sensors/SeaSonde&quot; ;
+        :file_version_quality_control = &quot;Data in this file has not been quality controlled&quot; ;
+        :acknowledgement = &quot;Data was sourced from Integrated Marine Observing System (IMOS) - an initiative of the Australian Government being conducted as part of the National Calloborative Research Infrastructure Strategy.&quot; ;
+        :time_coverage_duration = &quot;PT1H19M&quot; ;
+        :local_time_zone = 8. ;
+        :geospatial_lat_min = -29.5386582, -29.5927878, -29.6469169, -29.7010456, -29.7551738, -29.8093016, -29.863429, -29.9175559, -29.9716823, -30.0258084, -30.0799339, -30.1340591, -30.1881837, -30.242308, -30.2964318, -30.3505551, -30.404678, -30.4588004, -30.5129224, -30.5670439, -30.621165, -30.6752857, -30.7294059, -30.7835256, -30.8376449, -30.8917637, -30.9458821, -31., -31.0541175, -31.1082345, -31.162351, -31.2164671, -31.2705828, -31.324698, -31.3788127, -31.432927, -31.4870408, -31.5411542, -31.5952671, -31.6493795, -31.7034915, -31.7576031, -31.8117141, -31.8658247, -31.9199349, -31.9740446, -32.0281538, -32.0822625, -32.1363708, -32.1904787, -32.244586, -32.2986929, -32.3527994, -32.4069054, -32.4610109 ;
+        :time_coverage_start = &quot;2012-10-01T00:00:00Z&quot; ;
+        :geospatial_vertical_min = 0. ;
+        :time_coverage_end = &quot;2012-10-29T18:00:00Z&quot; ;
+        :data_center_email = &quot;info@emii.org.au&quot; ;
+        :institution = &quot;Australian Coastal Ocean Radar Network (ACORN)&quot; ;
+        :geospatial_lon_max = 115.7758038, 115.7766744, 115.7775469, 115.7784212, 115.7792975, 115.7801756, 115.7810557, 115.7819376, 115.7828215, 115.7837073, 115.784595, 115.7854846, 115.7863762, 115.7872697, 115.7881651, 115.7890625, 115.7899618, 115.7908631, 115.7917663, 115.7926715, 115.7935787, 115.7944878, 115.7953989, 115.796312, 115.7972271, 115.7981441, 115.7990632, 115.7999843, 115.8009074, 115.8018325, 115.8027596, 115.8036887, 115.8046199, 115.8055531, 115.8064883, 115.8074256, 115.8083649, 115.8093063, 115.8102497, 115.8111952, 115.8121427, 115.8130924, 115.8140441, 115.8149979, 115.8159538, 115.8169118, 115.8178719, 115.8188341, 115.8197984, 115.8207648, 115.8217334, 115.822704, 115.8236768, 115.8246518, 115.8256289 ;
+        :geospatial_lon_min = 112.3100111, 112.3090067, 112.3080002, 112.3069914, 112.3059805, 112.3049674, 112.3039521, 112.3029346, 112.3019149, 112.3008929, 112.2998688, 112.2988424, 112.2978139, 112.2967831, 112.29575, 112.2947147, 112.2936772, 112.2926374, 112.2915953, 112.290551, 112.2895044, 112.2884556, 112.2874044, 112.286351, 112.2852953, 112.2842373, 112.283177, 112.2821143, 112.2810494, 112.2799821, 112.2789125, 112.2778406, 112.2767663, 112.2756897, 112.2746108, 112.2735294, 112.2724458, 112.2713597, 112.2702713, 112.2691805, 112.2680873, 112.2669917, 112.2658937, 112.2647933, 112.2636905, 112.2625853, 112.2614777, 112.2603676, 112.2592551, 112.2581402, 112.2570228, 112.2559029, 112.2547806, 112.2536558, 112.2525286 ;
+        :data_centre_email = &quot;info@emii.org.au&quot; ;
+        :date_modified = &quot;2012-10-30T16:31:50Z&quot; ;
+        :principal_investigator = &quot;Wyatt, Lucy&quot; ;
+        :data_centre = &quot;eMarine Information Infrastructure (eMII)&quot; ;
+        :author = &quot;Besnard, Laurent&quot; ;
+        :Conventions = &quot;IMOS version 1.3&quot; ;
+        :project = &quot;Integrated Marine Observing System (IMOS)&quot; ;
+        :quality_control_set = &quot;1&quot; ;
+        :source = &quot;Terrestrial HF radar&quot; ;
+        :ssr_Stations = &quot;SeaBird (SBRD), Cervantes (CRVT)&quot; ;
+        :date_created = &quot;2012-10-30T16:31:50Z&quot; ;
+        :geospatial_vertical_units = &quot;m&quot; ;
+        :history = &quot;2015-02-17T20:26:35: /opt/python/bin/python calc_current_speed.py http://thredds.aodn.org.au/thredds/dodsC/IMOS/eMII/demos/ACORN/monthly_gridded_1h-avg-current-map_non-QC/TURQ/2012/IMOS_ACORN_V_20121001T000000Z_TURQ_FV00_monthly-1-hour-avg_END-20121029T180000Z_C-20121030T160000Z.nc.gz UCUR VCUR IMOS_ACORN_SPCUR_20121001T000000Z_TURQ_monthly-1-hour-avg_END-20121029T180000Z.nc (Git hash: 765320b)\n2012-10-09T03:31:35 Convert totl_TURQ_2012_10_08_1500.tuv to netcdf format using CODAR_Convert_File.\n2012-10-09T03:31:36 Write CODAR file totl_TURQ_2012_10_08_1500.tuv. Modification of the NetCDF format by eMII to visualise the data using ncWMS&quot; ;
+}</code></pre>
+<p>There are a lot of global and variable attributes in our output file, because we copied everything from the input file. It might be tempting to edit <code>calc_current_speed.py</code> or use the <code>ncatted</code> command line utility (which, like <code>ncdump</code>, comes with the <a href="http://nco.sourceforge.net/">NCO</a> install) to start cleaning up (i.e. delete) some of these attributes, but we should resist that urge. The <code>id</code> global attribute, for instance, makes little sense to anyone who doesn't work at IMOS. While this might seem like a reasonable argument for deleting that attribute, once an attribute is deleted it's gone forever. The <code>id</code> attribute is taking up a negligible amount of memory, so why not just leave it there just in case? When in doubt, keep metadata.</p>
+<div id="a-provenance-plan" class="challenge panel panel-success">
+<div class="panel-heading">
+<h2><span class="glyphicon glyphicon-pencil"></span>A provenance plan</h2>
+</div>
+<div class="panel-body">
+<p>Does your data management plan from the first challenge adequately address this issue of data provenance? If not, go ahead and add to your plan now. Things to consider include:</p>
+<ul>
+<li>How to capture and store metadata relating to output files that aren't self describing (i.e. unlike <code>.nc</code> files, formats like <code>.csv</code> or <code>.png</code> don't store things like global and variable attributes within them)</li>
+</ul>
+<p>Discuss the additions you've made to your plan with your partner.</p>
+</div>
+</div>
+        </div>
+      </div>
+      <div class="footer">
+        <a class="label swc-blue-bg" href="http://software-carpentry.org">Software Carpentry</a>
+        <a class="label swc-blue-bg" href="https://github.com/swcarpentry/lesson-template">Source</a>
+        <a class="label swc-blue-bg" href="mailto:admin@software-carpentry.org">Contact</a>
+        <a class="label swc-blue-bg" href="LICENSE.html">License</a>
+      </div>
+    </div>
+    <!-- Javascript placed at the end of the document so the pages load faster -->
+    <script src="http://software-carpentry.org/v5/js/jquery-1.9.1.min.js"></script>
+    <script src="css/bootstrap/bootstrap-js/bootstrap.js"></script>
+  </body>
+</html>
